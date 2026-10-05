@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sort the Scenarios: Drag and Drop</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#e6edf5;--ink:#14233b;--mute:#5a6b82;--strip:#f7e9a6;--strip-line:#d9c46a;--panel:#fff;--line:#b4c3d6;--ok:#1a7f52;--bad:#c0392b;--acc:#1f5fd1;--accsoft:#dce7fb;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101a2b;--ink:#e8eef8;--mute:#9fb0c8;--strip:#4a4320;--strip-line:#7a6d2c;--panel:#18263d;--line:#2c3e5c;--ok:#4cc38a;--bad:#ef7b6e;--acc:#6ea0ff;--accsoft:#22365a}}
+:root[data-theme="dark"]{--bg:#101a2b;--ink:#e8eef8;--mute:#9fb0c8;--strip:#4a4320;--strip-line:#7a6d2c;--panel:#18263d;--line:#2c3e5c;--ok:#4cc38a;--bad:#ef7b6e;--acc:#6ea0ff;--accsoft:#22365a}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Barlow,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:17px;line-height:1.4}
+main{max-width:860px;margin:0 auto;padding:16px 14px 40px}
+h1,h2,.hd{font-family:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;margin:0}
+h1{font-size:40px;line-height:1.02;font-weight:700}
+h2{font-size:26px;font-weight:700}
+.mute{color:var(--mute)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,.chip:focus-visible,.zone:focus-visible,.tray:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:11px 20px;font-weight:600;font-size:18px}
+:root[data-theme="dark"] .btn{color:#0b1830}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.stats{font-family:"Barlow Condensed",sans-serif;font-size:20px;font-weight:600;text-align:right;white-space:nowrap}
+.sel{margin:12px 0;padding:10px 14px;border:1.5px dashed var(--line);border-radius:8px;min-height:50px;background:var(--panel)}
+.sel b{font-size:19px}
+.grid{display:grid;grid-template-columns:78px repeat(3,1fr);gap:6px;margin:10px 0}
+.ch,.rh{font-family:"Barlow Condensed",sans-serif;font-weight:600;font-size:17px;line-height:1.1;color:var(--mute);display:flex;align-items:center;padding:2px}
+.ch{justify-content:center;text-align:center}
+.zone{min-height:96px;background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:5px;display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start}
+.zone.over,.tray.over{border-color:var(--acc);background:var(--accsoft)}
+.tray{min-height:64px;border:1.5px dashed var(--line);border-radius:8px;padding:8px;display:flex;flex-wrap:wrap;gap:6px;background:var(--panel)}
+.chip{background:var(--strip);border:1.5px solid var(--strip-line);border-left:7px solid var(--strip-line);border-radius:5px;padding:5px 9px;font-weight:600;font-size:15px;line-height:1.2;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.chip.sel1{outline:3px solid var(--acc)}
+.chip.ok{background:var(--ok);border-color:var(--ok);color:#fff;cursor:default}
+.chip.bad{border-color:var(--bad);box-shadow:0 0 0 2px var(--bad)}
+.chip.ghost{position:fixed;z-index:50;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.25);transform:rotate(-2deg)}
+.chip.drag{opacity:.3}
+.msg{margin:10px 0;font-weight:600;min-height:26px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0}
+.th{font-size:14px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+.hints{margin-top:6px}.hint{padding:9px 12px;margin:6px 0;border-left:5px solid var(--bad);background:var(--panel);border-radius:6px;font-size:16px}
+.res{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:14px 16px;margin-top:14px}
+.def{margin:12px 0;padding:10px 12px;background:var(--accsoft);border-radius:6px}
+.why{padding:7px 0;border-top:1px solid var(--line);font-size:16px}
+@media (max-width:560px){h1{font-size:34px}.grid{grid-template-columns:58px repeat(3,1fr);gap:4px}.ch,.rh{font-size:14px}.zone{min-height:84px;padding:3px}.chip{font-size:13px;padding:4px 6px}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+var ROWS=["Supervised","Unsupervised","Reinforcement"];
+var COLS=["Regression","Classification","Other: clustering or control"];
+// [short, full, row, col, why, defend]
+var D=[
+["Predict fuel burn","Predict how many kilograms of fuel a flight will burn",0,0,"Labelled past flights and a numeric answer.","Why is this not classification?"],
+["Group satellites by orbit behaviour","Group satellites by how their orbits behave. Nobody has named the groups.",1,2,"No labels exist, so the algorithm finds clusters itself.","What would turn this into supervised learning?"],
+["Autopilot learns to land","An autopilot practises landing in a simulator and scores points for a smooth touchdown",2,2,"Trial, reward and penalty. No labelled answers, only a score.","What could the agent do to cheat the reward?"],
+["Spam filter for ATC messages","Flag incoming ATC messages as spam or genuine, using past labelled messages",0,1,"Labelled examples and a category as the answer.","Which error is worse: a missed spam or a blocked genuine message?"],
+["Estimate engine remaining life","Estimate the remaining life of an engine in flight hours",0,0,"Labelled history and a numeric answer.","Could you turn this into classification? How?"],
+["Cracked blade or not","Label a turbine blade as cracked or not cracked from vibration readings",0,1,"Two categories learned from labelled examples.","Is a false alarm or a miss more costly? Defend one."],
+["Discover hidden flight modes","Discover hidden flight modes (cruise, climb, turbulence) in unlabelled sensor logs",1,2,"No labels, so the model groups similar patterns.","How would you decide how many modes exist?"],
+["Drone avoids no-fly zones","A drone learns to avoid no-fly zones by losing points whenever it enters one",2,2,"The drone learns from rewards and penalties through repeated trials.","What state, action and reward would you define?"],
+["Lift coefficient from angle of attack","Predict the lift coefficient from the angle of attack, using wind-tunnel data",0,0,"Labelled measurements and a numeric answer.","Where would the model go wrong near stall?"],
+["Drone or bird on radar","Tell a drone from a bird on radar, using past tracks that were labelled",0,1,"Labelled tracks and a category as the answer.","Which features would you give the model?"],
+["Satellite learns attitude control","A satellite learns to steady its attitude by trial and error",2,2,"The satellite acts, gets feedback and improves its policy.","Why is it unsafe to train this only on the real satellite?"],
+["Spot unusual sensor readings","Spot unusual sensor readings when no fault has ever been labelled",1,2,"With no labels, the model learns what is normal and flags what differs.","What if a rare but normal event gets flagged?"],
+["Forecast runway temperature","Forecast tomorrow's runway temperature in degrees Celsius",0,0,"Past data with known temperatures and a numeric answer.","What would the labels be for training?"],
+["Launch go or no-go","Decide go or no-go for a launch, trained on past launches already marked go or no-go",0,1,"Labelled past decisions and a category as the answer.","Why might engineers prefer a decision tree here?"],
+["Group passengers, no categories","Split airline passengers into similar groups when no categories are given",1,2,"There are no labels, so the model discovers the groups.","How would you check whether the groups are useful?"]
+];
+var app=document.getElementById("app");
+var loc,lock,bad,miss,hints,sel,att,done,msg,drag=null,just=false,shown;
+function esc(s){var d=document.createElement("div");d.textContent=s;return d.innerHTML}
+function shuffle(a){a=a.slice();for(var k=a.length-1;k>0;k--){var j=Math.floor(Math.random()*(k+1));var t=a[k];a[k]=a[j];a[j]=t}return a}
+function init(){
+  loc=D.map(function(){return "t"});lock=D.map(function(){return false});bad=D.map(function(){return false});
+  miss=D.map(function(){return 0});hints=[];shown=shuffle(D.map(function(_,k){return k}));sel=null;att=0;done=false;msg="";render();
+}
+function chip(k){
+  var c="chip"+(lock[k]?" ok":"")+(bad[k]?" bad":"")+(sel===k?" sel1":"")+(drag&&drag.moved&&drag.k===k?" drag":"");
+  return '<div class="'+c+'" data-k="'+k+'" role="button" tabindex="0" aria-label="'+esc(D[k][0])+'">'+(lock[k]?"\u2713 ":"")+esc(D[k][0])+'</div>';
+}
+function render(){
+  var left=loc.filter(function(x){return x==="t"}).length,good=lock.filter(Boolean).length;
+  var h='<div class="head"><div><h1>Sort the Scenarios</h1><p class="mute" style="margin:4px 0 0">Drag each card to the cell where it belongs.</p></div><div><div class="stats">Checks: '+att+'</div><button class="th" id="th" style="margin-top:6px">Light or dark</button></div></div>';
+  h+='<div class="sel" aria-live="polite">'+(sel!==null?'<b>'+esc(D[sel][1])+'</b><br><span class="mute">Now tap a cell to place it.</span>':'<span class="mute">Drag a card onto the grid. Or tap a card to read it in full, then tap a cell.</span>')+'</div>';
+  h+='<div class="grid"><div></div>';
+  COLS.forEach(function(x){h+='<div class="ch">'+x+'</div>'});
+  ROWS.forEach(function(r,ri){
+    h+='<div class="rh">'+r+'</div>';
+    COLS.forEach(function(cn,ci){
+      var key=ri+"-"+ci;
+      h+='<div class="zone" data-loc="'+key+'" tabindex="0" role="group" aria-label="'+r+', '+cn+'">';
+      shown.forEach(function(k){if(loc[k]===key)h+=chip(k)});
+      h+='</div>';
+    });
+  });
+  h+='</div><h2>Cards to place ('+left+' left)</h2><div class="tray" data-loc="t" tabindex="0" aria-label="Card tray">';
+  shown.forEach(function(k){if(loc[k]==="t")h+=chip(k)});
+  h+='</div><div class="msg" aria-live="polite">'+esc(msg)+'</div>';
+  if(hints.length){h+='<div class="hints" aria-live="polite"><h2 style="font-size:22px">Hints</h2>';hints.forEach(function(x){h+='<div class="hint"><b>'+esc(D[x.k][0])+'</b><br>'+esc(x.t)+'</div>'});h+='</div>'}
+  h+='<div class="row"><button class="btn" id="chk"'+(left||done?' disabled':'')+'>Check answers</button><button class="btn ghost" id="rst">Start over</button></div>';
+  if(done)h+=results();
+  app.innerHTML=h;
+  document.getElementById("th").onclick=function(){var r=document.documentElement,d=r.getAttribute("data-theme"),sd=matchMedia("(prefers-color-scheme: dark)").matches,now=d||(sd?"dark":"light");r.setAttribute("data-theme",now==="dark"?"light":"dark")};
+  document.getElementById("chk").onclick=check;
+  document.getElementById("rst").onclick=init;
+}
+function hint(k){
+  var r=D[k][2],c=D[k][3],p=loc[k].split("-"),pr=+p[0],t;
+  if(pr!==r){
+    t=r===0?"Look at the data. Do past examples come with known answers (labels) to learn from?":
+      r===1?"Look at the data. Has anyone given the model the right answers, or must it find patterns on its own?":
+      "Look at how it learns. Is it improving by trial, with rewards and penalties?";
+    if(miss[k]>=2)t+=" Extra hint: it belongs in the "+ROWS[r]+" row."
+  }else if(r===0){
+    t=c===0?"Right row. Now look at the answer: it is a number, not a category.":"Right row. Now look at the answer: it is one of a few categories, not a number.";
+    if(miss[k]>=2)t+=" Extra hint: it belongs in the "+COLS[c]+" column."
+  }else{
+    t="Right row. This type does not predict a number or a category. Try the Other column."
+  }
+  return t;
+}
+function check(){
+  att++;var wrong=0;hints=[];
+  for(var k=0;k<D.length;k++){
+    if(lock[k])continue;
+    var want=D[k][2]+"-"+D[k][3];
+    if(loc[k]===want){lock[k]=true;bad[k]=false}
+    else{bad[k]=true;wrong++;miss[k]++;hints.push({k:k,t:hint(k)})}
+  }
+  if(!wrong){done=true;hints=[];msg="All 15 placed correctly.";render();return}
+  msg=wrong+(wrong===1?" card is":" cards are")+" in the wrong cell. Read the hints, then try again.";
+  render();
+  setTimeout(function(){for(var k=0;k<D.length;k++){if(bad[k]){loc[k]="t"}}render()},1400);
+}
+function results(){
+  var q=D[Math.floor(Math.random()*D.length)];
+  var h='<div class="res"><h2>Solved</h2><p>'+att+(att===1?' check':' checks')+'. '+(att===1?'A perfect first attempt.':'Fewer checks means a better score. Try again to beat it.')+'</p>';
+  h+='<div class="def"><b>Defend one choice.</b> Pick "'+esc(q[0])+'" and answer aloud: '+esc(q[4])+'</div>';
+  h+='<h2 style="font-size:22px">Why each card goes where it does</h2>';
+  D.forEach(function(c){h+='<div class="why"><b>'+esc(c[0])+'</b> goes in <b>'+ROWS[c[2]]+', '+COLS[c[3]].split(":")[0].toLowerCase()+'</b>. '+esc(c[4])+'</div>'});
+  return h+'</div>';
+}
+function place(k,l){if(lock[k])return;loc[k]=l;bad[k]=false;if(sel===k)sel=null;msg=""}
+app.addEventListener("pointerdown",function(e){
+  var c=e.target.closest(".chip");if(!c||done)return;var k=+c.dataset.k;if(lock[k])return;
+  drag={k:k,x:e.clientX,y:e.clientY,moved:false,g:null,w:c.offsetWidth};
+});
+document.addEventListener("pointermove",function(e){
+  if(!drag)return;
+  if(!drag.moved&&Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>6){
+    drag.moved=true;var g=document.createElement("div");g.className="chip ghost";g.textContent=D[drag.k][0];g.style.maxWidth="220px";document.body.appendChild(g);drag.g=g;
+    var el=app.querySelector('.chip[data-k="'+drag.k+'"]');if(el)el.classList.add("drag");
+  }
+  if(drag.moved){
+    drag.g.style.left=(e.clientX-40)+"px";drag.g.style.top=(e.clientY-18)+"px";
+    var prev=document.querySelector(".over");if(prev)prev.classList.remove("over");
+    var t=document.elementFromPoint(e.clientX,e.clientY),z=t&&t.closest(".zone,.tray");if(z)z.classList.add("over");
+  }
+});
+document.addEventListener("pointerup",function(e){
+  if(!drag)return;var d=drag;drag=null;
+  if(d.moved){
+    d.g.remove();var t=document.elementFromPoint(e.clientX,e.clientY),z=t&&t.closest(".zone,.tray");
+    if(z)place(d.k,z.dataset.loc);
+    just=true;setTimeout(function(){just=false},0);render();
+  }else{
+    sel=(sel===d.k?null:d.k);just=true;setTimeout(function(){just=false},0);render();
+  }
+});
+document.addEventListener("pointercancel",function(){if(drag){if(drag.g)drag.g.remove();drag=null;render()}});
+app.addEventListener("click",function(e){
+  if(just||sel===null||e.target.closest(".chip"))return;
+  var z=e.target.closest(".zone,.tray");if(z){place(sel,z.dataset.loc);render()}
+});
+app.addEventListener("keydown",function(e){
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  var c=e.target.closest(".chip"),z=e.target.closest(".zone,.tray");
+  if(c&&e.target===c){e.preventDefault();var k=+c.dataset.k;if(!lock[k]){sel=(sel===k?null:k);render();var n=app.querySelector('.chip[data-k="'+k+'"]');if(n)n.focus()}}
+  else if(z&&e.target===z&&sel!==null){e.preventDefault();place(sel,z.dataset.loc);render()}
+});
+init();
+</script>
+</body>
+</html>
